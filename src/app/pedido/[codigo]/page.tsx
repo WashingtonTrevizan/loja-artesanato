@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import { createClient } from '@/lib/supabase/client';
 import { formatBRL } from '@/lib/types';
@@ -15,6 +16,7 @@ const STEPS = [
 export default function OrderTrackingPage({ params }: { params: { codigo: string } }) {
   const [order, setOrder] = useState<any | null | undefined>(undefined);
   const [paying, setPaying] = useState(false);
+  const isNovo = useSearchParams().get('novo') === '1';
   const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_ARTESA;
 
   async function pagarAgora() {
@@ -68,6 +70,16 @@ export default function OrderTrackingPage({ params }: { params: { codigo: string
     <>
       <Header />
       <main className="mx-auto max-w-xl px-4 pb-24">
+        {isNovo && (
+          <div className="mt-4 rounded-2xl bg-green-50 p-4 text-green-800">
+            <p className="font-bold">Pedido recebido! 🎉</p>
+            <p className="mt-1 text-sm">
+              Guarde o link desta página (salve nos favoritos ou copie) — é por aqui que você
+              acompanha tudo. Agora é só fazer o pagamento aqui embaixo. Seus itens ficam
+              reservados por 30 minutos.
+            </p>
+          </div>
+        )}
         <h1 className="mt-6 text-2xl font-bold">Seu pedido, {order.customer_name.split(' ')[0]} 💛</h1>
         <p className="text-sm text-stone-500">
           Guarde o link desta página para acompanhar a entrega.
