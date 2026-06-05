@@ -14,7 +14,28 @@ const STEPS = [
 
 export default function OrderTrackingPage({ params }: { params: { codigo: string } }) {
   const [order, setOrder] = useState<any | null | undefined>(undefined);
+  const [paying, setPaying] = useState(false);
   const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_ARTESA;
+
+  async function pagarAgora() {
+    setPaying(true);
+    try {
+      const r = await fetch('/api/mp/preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_code: params.codigo }),
+      });
+      const mp = await r.json();
+      if (mp.init_point) {
+        window.location.href = mp.init_point;
+        return;
+      }
+      alert('O pagamento online ainda não está ativo. Combine pelo WhatsApp por enquanto. 💛');
+    } catch {
+      alert('Não conseguimos abrir o pagamento agora. Tente de novo em instantes.');
+    }
+    setPaying(false);
+  }
 
   useEffect(() => {
     (async () => {
@@ -97,15 +118,24 @@ export default function OrderTrackingPage({ params }: { params: { codigo: string
         </div>
 
         {order.status === 'aguardando_pagamento' && (
-          <a
-            href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(
-              `Olá! Acabei de fazer um pedido no site (código ${params.codigo.slice(0, 8)}). Como faço o pagamento?`
-            )}`}
-            target="_blank"
-            className="mt-4 block w-full rounded-full bg-green-600 py-4 text-center text-lg font-bold text-white shadow-md"
-          >
-            Combinar pagamento no WhatsApp 💬
-          </a>
+          <>
+            <button
+              onClick={pagarAgora}
+              disabled={paying}
+              className="mt-4 block w-full rounded-full bg-brand-600 py-4 text-center text-lg font-bold text-white shadow-md disabled:bg-stone-300"
+            >
+              {paying ? 'Abrindo pagamento...' : 'Pagar agora (Pix, cartão ou boleto)'}
+            </button>
+            <a
+              href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(
+                `Olá! Fiz um pedido no site (código ${params.codigo.slice(0, 8)}). Pode me ajudar com o pagamento?`
+              )}`}
+              target="_blank"
+              className="mt-2 block w-full rounded-full border border-green-600 py-3 text-center text-sm font-bold text-green-700"
+            >
+              Prefiro combinar no WhatsApp 💬
+            </a>
+          </>
         )}
       </main>
     </>

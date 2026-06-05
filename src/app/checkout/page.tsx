@@ -77,6 +77,19 @@ export default function CheckoutPage() {
       return;
     }
     clear();
+    // tenta abrir o pagamento (Mercado Pago); sem ele, vai para o acompanhamento
+    try {
+      const r = await fetch('/api/mp/preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_code: data.access_code }),
+      });
+      const mp = await r.json();
+      if (mp.init_point) {
+        window.location.href = mp.init_point;
+        return;
+      }
+    } catch {}
     router.push(`/pedido/${data.access_code}`);
   }
 
