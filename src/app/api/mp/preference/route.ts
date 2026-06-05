@@ -39,9 +39,16 @@ export async function POST(req: Request) {
     auto_return: 'approved',
     notification_url: `${site}/api/mp/webhook`,
     statement_descriptor: (process.env.NEXT_PUBLIC_NOME_LOJA || 'LOJA').slice(0, 22),
-    // Pix expira junto com a reserva de estoque (30 min)
-    date_of_expiration: order.expires_at,
   };
+
+  // Pix expira junto com a reserva de estoque (30 min), no formato exigido pelo MP
+  // (só envia se ainda faltar tempo razoável; formato yyyy-MM-ddTHH:mm:ss.SSS+00:00)
+  if (order.expires_at) {
+    const exp = new Date(order.expires_at);
+    if (exp.getTime() - Date.now() > 2 * 60 * 1000) {
+      (preference as any).date_of_expiration = exp.toISOString().replace('Z', '+00:00');
+    }
+  }
 
   const r = await fetch('https://api.mercadopago.com/checkout/preferences', {
     method: 'POST',
@@ -56,5 +63,6 @@ export async function POST(req: Request) {
   }
 
   const data = await r.json();
+  console.log('MP preference criada:', data.id, 'init_point:', data.init_point);
   return NextResponse.json({ init_point: data.init_point });
 }
