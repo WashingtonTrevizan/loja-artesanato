@@ -4,7 +4,12 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Category, ProductImage } from '@/lib/types';
 
-type VariantLine = { id?: string; name: string; stock: number };
+type VariantLine = { uid: string; dbId?: string; name: string; stock: number };
+
+let uidCounter = 0;
+function newUid() {
+  return `v-${Date.now()}-${uidCounter++}`;
+}
 
 export default function ProductForm({ productId }: { productId?: string }) {
   const router = useRouter();
@@ -30,14 +35,14 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
 
-  // variações
+  // variações (inputs não controlados com chave estável — evita bugs de cursor)
   const [hasVariants, setHasVariants] = useState(false);
   const [variantLabel, setVariantLabel] = useState('Tamanho');
-  const [variants, setVariants] = useState<VariantLine[]>([{ name: '', stock: 1 }]);
+  const [variants, setVariants] = useState<VariantLine[]>([{ uid: 'v-0', name: '', stock: 1 }]);
 
   // fotos
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newFiles, setNewFiles] = useState<{ uid: string; file: File; preview: string }[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -71,7 +76,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
             setVariants(
               (p.product_variants || [])
                 .sort((a: any, b: any) => a.position - b.position)
-                .map((v: any) => ({ id: v.id, name: v.name, stock: v.stock }))
+                .map((v: any) => ({ uid: v.id, dbId: v.id, name: v.name, stock: v.stock }))
             );
           }
         }
@@ -91,6 +96,10 @@ export default function ProductForm({ productId }: { productId?: string }) {
       if (!width) setWidth(String(cat.default_width_cm));
       if (!height) setHeight(String(cat.default_height_cm));
     }
+  }
+
+  function updateVariant(uid: string, patch: Partial<VariantLine>) {
+    setVariants((prev) => prev.map((v) => (v.uid === uid ? { ...v, ...patch } : v)));
   }
 
   function parsePrice(text: string): number {
@@ -156,21 +165,33 @@ export default function ProductForm({ productId }: { productId?: string }) {
         if (err) throw err;
       }
 
-      // fotos novas
+      // fotos novas — se falharem, o produto já está salvo; avisa sem perder o trabalho
+      const fotosComErro: string[] = [];
       for (let i = 0; i < newFiles.length; i++) {
-        const file = newFiles[i];
-        const ext = file.name.split('.').pop() || 'jpg';
+        const { file } = newFiles[i];
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
         const path = `${id}/${Date.now()}-${i}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('product-images')
           .upload(path, file, { contentType: file.type });
-        if (upErr) throw upErr;
+        if (upErr) {
+          fotosComErro.push(upErr.message);
+          continue;
+        }
         const { data: pub } = supabase.storage.from('product-images').getPublicUrl(path);
         await supabase.from('product_images').insert({
           product_id: id,
           url: pub.publicUrl,
           position: existingImages.length + i,
         });
+      }
+
+      if (fotosComErro.length > 0) {
+        alert(
+          'O produto foi salvo, mas as fotos não subiram.\n\nMotivo técnico: ' +
+            fotosComErro[0] +
+            '\n\nVocê pode tentar de novo editando o produto.'
+        );
       }
 
       router.push('/admin');
@@ -226,13 +247,13 @@ export default function ProductForm({ productId }: { productId?: string }) {
                 </button>
               </div>
             ))}
-            {newFiles.map((f, i) => (
-              <div key={i} className="relative h-24 w-24 overflow-hidden rounded-xl">
+            {newFiles.map((f) => (
+              <div key={f.uid} className="relative h-24 w-24 overflow-hidden rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
+                <img src={f.preview} alt="" className="h-full w-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => setNewFiles((prev) => prev.filter((_, j) => j !== i))}
+                  onClick={() => setNewFiles((prev) => prev.filter((x) => x.uid !== f.uid))}
                   className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white"
                 >
                   ✕
@@ -255,7 +276,12 @@ export default function ProductForm({ productId }: { productId?: string }) {
             multiple
             className="hidden"
             onChange={(e) => {
-              setNewFiles((prev) => [...prev, ...Array.from(e.target.files || [])]);
+              const files = Array.from(e.target.files || []).map((file) => ({
+                uid: newUid(),
+                file,
+                preview: URL.createObjectURL(file),
+              }));
+              setNewFiles((prev) => [...prev, ...files]);
               e.target.value = '';
             }}
           />
@@ -331,26 +357,26 @@ export default function ProductForm({ productId }: { productId?: string }) {
               </select>
 
               <div className="mt-3 space-y-2">
-                {variants.map((v, i) => (
-                  <div key={i} className="flex gap-2">
+                {variants.map((v) => (
+                  <div key={v.uid} className="flex gap-2">
                     <input
-                      value={v.name}
-                      onChange={(e) => setVariants((prev) => prev.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                      defaultValue={v.name}
+                      onChange={(e) => updateVariant(v.uid, { name: e.target.value })}
                       className={inputCls + ' mt-0 flex-1'}
                       placeholder={variantLabel === 'Tamanho' ? 'Ex.: M' : 'Ex.: Floral azul'}
                     />
                     {productType === 'pronta_entrega' && (
                       <input
                         inputMode="numeric"
-                        value={v.stock}
-                        onChange={(e) => setVariants((prev) => prev.map((x, j) => (j === i ? { ...x, stock: parseInt(e.target.value) || 0 } : x)))}
+                        defaultValue={v.stock}
+                        onChange={(e) => updateVariant(v.uid, { stock: parseInt(e.target.value) || 0 })}
                         className={inputCls + ' mt-0 w-20 text-center'}
                         title="Quantidade"
                       />
                     )}
                     <button
                       type="button"
-                      onClick={() => setVariants((prev) => prev.filter((_, j) => j !== i))}
+                      onClick={() => setVariants((prev) => prev.filter((x) => x.uid !== v.uid))}
                       className="px-2 text-stone-400"
                     >
                       ✕
@@ -363,7 +389,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
               )}
               <button
                 type="button"
-                onClick={() => setVariants((prev) => [...prev, { name: '', stock: 1 }])}
+                onClick={() => setVariants((prev) => [...prev, { uid: newUid(), name: '', stock: 1 }])}
                 className="mt-2 text-sm font-medium text-brand-600"
               >
                 + Adicionar outra
