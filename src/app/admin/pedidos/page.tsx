@@ -88,7 +88,9 @@ export default function PedidosPage() {
 
   function whatsappLink(o: Order) {
     const numero = o.customer_whatsapp.replace(/\D/g, '');
-    const completo = numero.startsWith('55') ? numero : '55' + numero;
+    // 10-11 dígitos = DDD + número (sem DDI) -> adiciona o 55 do Brasil.
+    // 12-13 dígitos = já veio com DDI. (Cuida do caso DDD 55, ex.: Santa Maria-RS)
+    const completo = numero.length <= 11 ? '55' + numero : numero;
     const msg = (MSG_WHATSAPP[o.status] || 'Olá NOME!')
       .replace('NOME', o.customer_name.split(' ')[0])
       .replace('RASTREIO', o.tracking_code ? `Rastreio: ${o.tracking_code}` : '');
