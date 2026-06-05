@@ -23,6 +23,10 @@ export default function AdminNav() {
           <span className="text-xl">📦</span>
           Produtos
         </Link>
+        <Link href="/admin/pedidos" className="flex flex-col items-center px-4 py-1 text-xs font-medium text-stone-600">
+          <span className="text-xl">📋</span>
+          Pedidos
+        </Link>
         <Link
           href="/admin/produto/novo"
           className="flex flex-col items-center rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow-lg"

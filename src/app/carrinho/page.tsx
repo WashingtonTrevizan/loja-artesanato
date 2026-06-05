@@ -105,16 +105,19 @@ export default function CartPage() {
                 <span>Total</span>
                 <span className="text-brand-600">{formatBRL(totalCents)}</span>
               </div>
-              <p className="mt-1 text-xs text-stone-500">Frete combinado no WhatsApp.</p>
+              <p className="mt-1 text-xs text-stone-500">Frete combinado após o pedido (em breve, calculado aqui).</p>
+              <Link
+                href="/checkout"
+                className="mt-4 block w-full rounded-full bg-brand-600 py-4 text-center text-lg font-bold text-white shadow-md transition active:scale-95"
+              >
+                Finalizar compra
+              </Link>
               <button
                 onClick={checkoutWhatsApp}
-                className="mt-4 w-full rounded-full bg-green-600 py-4 text-lg font-bold text-white shadow-md transition active:scale-95"
+                className="mt-2 w-full rounded-full border border-green-600 py-3 text-sm font-bold text-green-700"
               >
-                Finalizar pelo WhatsApp 💬
+                Prefiro pedir pelo WhatsApp 💬
               </button>
-              <p className="mt-2 text-center text-xs text-stone-400">
-                Em breve: pagamento por Pix e cartão direto no site.
-              </p>
             </div>
           </>
         )}
