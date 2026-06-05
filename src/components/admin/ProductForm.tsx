@@ -362,7 +362,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                     <input
                       defaultValue={v.name}
                       onChange={(e) => updateVariant(v.uid, { name: e.target.value })}
-                      className={inputCls + ' mt-0 flex-1'}
+                      className={inputCls + ' mt-0 min-w-0 flex-1'}
                       placeholder={variantLabel === 'Tamanho' ? 'Ex.: M' : 'Ex.: Floral azul'}
                     />
                     {productType === 'pronta_entrega' && (
@@ -370,7 +370,8 @@ export default function ProductForm({ productId }: { productId?: string }) {
                         inputMode="numeric"
                         defaultValue={v.stock}
                         onChange={(e) => updateVariant(v.uid, { stock: parseInt(e.target.value) || 0 })}
-                        className={inputCls + ' mt-0 w-20 text-center'}
+                        className="w-20 shrink-0 rounded-xl border border-stone-300 bg-white px-2 py-3 text-center text-base focus:border-brand-500 focus:outline-none"
+                        placeholder="Qtde"
                         title="Quantidade"
                       />
                     )}
